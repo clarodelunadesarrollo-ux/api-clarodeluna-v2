@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: claro_de_luna_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: claro
+      POSTGRES_PASSWORD: claro_dev_password
+      POSTGRES_DB: claro_de_luna
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U claro -d claro_de_luna']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

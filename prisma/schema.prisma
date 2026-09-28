@@ -1,0 +1,338 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(CLIENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  otpCodes     OtpCode[]
+  reservations Reservation[]
+  conversation Conversation?
+  sentMessages Message[]
+}
+
+model OtpCode {
+  id         String    @id @default(uuid())
+  userId     String
+  code       String // hashed at rest, never plaintext
+  attempts   Int       @default(0)
+  status     OtpStatus @default(ACTIVE)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+}
+
+model Reservation {
+  id         String            @id @default(uuid())
+  userId     String
+  type       ReservationType
+  date       DateTime          @db.Date
+  time       String
+  partySize  Int
+  holderName String
+  status     ReservationStatus @default(ACTIVE)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, type, status, date])
+}
+
+// A 1-to-1 support conversation between a client and the support team. Exactly
+// one conversation per client (unique clientId); it is created on demand the
+// first time the client opens the chat. `lastMessageAt` orders the admin inbox.
+model Conversation {
+  id            String    @id @default(uuid())
+  clientId      String    @unique
+  lastMessageAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  client   User      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([lastMessageAt])
+}
+
+// A single chat message. `senderType` distinguishes who wrote it; `type` is TEXT
+// for now (IMAGE reserved for the media phase, hence the nullable body/imageUrl).
+// `readAt` is set when the recipient reads it (drives unread counts / the badge).
+model Message {
+  id             String            @id @default(uuid())
+  conversationId String
+  senderType     MessageSenderType
+  senderId       String
+  type           MessageType       @default(TEXT)
+  body           String?
+  imageUrl       String?
+  readAt         DateTime?
+  createdAt      DateTime          @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([conversationId, senderType, readAt])
+}
+
+// Single schedule per reservation type (TOUR / RESTAURANT). The admin panel
+// configures the open/close window and the slot interval; available times are
+// generated as open, open+interval, ... while the slot is strictly before
+// close. `active = false` closes that type entirely (no bookable times).
+model ReservationSchedule {
+  id              String          @id @default(uuid())
+  type            ReservationType @unique
+  openTime        String
+  closeTime       String
+  intervalMinutes Int
+  active          Boolean         @default(true)
+  updatedAt       DateTime        @updatedAt
+}
+
+// A blocked date on which no reservations are accepted. `scope` narrows the
+// block to one type or both. At most one record per calendar date (date is
+// unique); `reason` is an optional admin note.
+model ReservationBlackout {
+  id        String        @id @default(uuid())
+  date      DateTime      @unique @db.Date
+  scope     BlackoutScope
+  reason    String?
+  createdAt DateTime      @default(now())
+}
+
+// Generic key/value settings store for global feature flags.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// The single global theme configuration applied across the whole app:
+// typography (family + weight for titles/subtitles/body), colors (a predefined
+// palette key OR a full custom palette) and light/dark mode. Singleton row
+// (id = "singleton"); the app reads it at startup and, for now, admins edit it
+// directly in the database.
+model ThemeConfiguration {
+  id   String    @id @default("singleton")
+  mode ThemeMode @default(SYSTEM)
+
+  // Typography per role. fontFamily is a curated Google Font name; fontWeight is
+  // a standard weight (300-900). Kept flat so each value is editable in the DB.
+  titleFontFamily    String
+  titleFontWeight    Int
+  subtitleFontFamily String
+  subtitleFontWeight Int
+  bodyFontFamily     String
+  bodyFontWeight     Int
+
+  // Palette: when PRESET, `presetKey` selects a predefined palette (colors live
+  // in the Flutter theme layer). When CUSTOM, `customPalette` holds the full set
+  // of semantic tokens, each with a light and dark HEX value:
+  // { background|surface|card|primary|primaryHover|secondary|accent|
+  //   textPrimary|textSecondary|border: { light, dark } }.
+  paletteSource PaletteSource @default(PRESET)
+  presetKey     String?
+  customPalette Json?
+
+  updatedAt DateTime @updatedAt
+}
+
+// The catalog of predefined theme palettes (presets). Each row is a complete
+// theme: 10 semantic tokens (light + dark) in `palette` and the shared status
+// colors in `semantic`. `presetKey` on ThemeConfiguration references `key`.
+// Seeded from the curated catalog; admins can add/edit rows in the DB.
+model ThemePreset {
+  key          String   @id
+  name         String
+  description  String
+  suggestedUse String
+  sortOrder    Int
+  isDefault    Boolean  @default(false)
+  palette      Json
+  semantic     Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([sortOrder])
+}
+
+// A single global tour itinerary: numbered stops positioned over the map image.
+// positionX / positionY are relative coordinates (0.0-1.0) so markers stay
+// responsive and are editable from the future admin app.
+model TourStop {
+  id          String   @id @default(uuid())
+  order       Int
+  title       String
+  description String
+  positionX   Float
+  positionY   Float
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active, order])
+}
+
+// A menu section groups dishes for a given experience (TOUR or RESTAURANT).
+// Sections and their dishes are authored by the future admin app; the guest
+// app only reads the menu that matches its active check-in context.
+model MenuSection {
+  id        String     @id @default(uuid())
+  menuType  MenuType
+  title     String
+  order     Int
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  dishes MenuDish[]
+
+  @@index([menuType, active, order])
+}
+
+// A dish inside a section. `imageUrl` is a Cloudinary secure URL rendered by
+// the guest app; `priceCents` is optional integer cents to avoid float errors;
+// `tags` are optional diet labels shown as chips when present.
+model MenuDish {
+  id          String   @id @default(uuid())
+  sectionId   String
+  name        String
+  description String
+  imageUrl    String
+  priceCents  Int?
+  tags        String[] @default([])
+  order       Int
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  section MenuSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId, active, order])
+}
+
+// A garden (huerta) media item shown to checked-in guests. Each item is either
+// an IMAGE or a VIDEO (Cloudinary secure URLs). `posterUrl` is required for
+// VIDEO items so the guest app never renders a blank thumbnail (AD-3).
+model HuertaItem {
+  id          String         @id @default(uuid())
+  type        HuertaItemType
+  title       String
+  description String?
+  mediaUrl    String
+  posterUrl   String?
+  order       Int
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([active, order])
+}
+
+// The single VR experience shown to guests: a simulated headset-connection flow
+// followed by a produced video. It is a singleton (one active row); the admin
+// edits `title` / `videoUrl` and the guest app always reads the current one.
+model VrExperience {
+  id        String   @id @default(uuid())
+  title     String
+  videoUrl  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([updatedAt])
+}
+
+// A promotional card shown in the Home carousel (alongside the reservation
+// card). Configured by the admin from the API; the guest app lists only the
+// active ones ordered by `order` asc. `imageUrl` and `icon` are optional:
+// `imageUrl` is a media URL and `icon` is a short key the app maps to a
+// built-in icon (with a fallback), so cards can be text-only, iconized, or
+// image-backed.
+model PromoCard {
+  id        String   @id @default(uuid())
+  title     String
+  subtitle  String
+  imageUrl  String?
+  icon      String?
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, order])
+}
+
+enum ThemeMode {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum PaletteSource {
+  PRESET
+  CUSTOM
+}
+
+enum OtpStatus {
+  ACTIVE
+  CONSUMED
+  EXPIRED
+  INVALIDATED
+}enum ReservationType {
+  TOUR
+  RESTAURANT
+}
+
+enum ReservationStatus {
+  ACTIVE
+  CHECKED_IN
+  CANCELLED
+}
+
+enum BlackoutScope {
+  RESTAURANT
+  TOUR
+  BOTH
+}
+
+enum MenuType {
+  TOUR
+  RESTAURANT
+}
+
+enum HuertaItemType {
+  IMAGE
+  VIDEO
+}
+
+enum UserRole {
+  CLIENT
+  ADMIN
+}
+
+enum MessageSenderType {
+  CLIENT
+  ADMIN
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+}

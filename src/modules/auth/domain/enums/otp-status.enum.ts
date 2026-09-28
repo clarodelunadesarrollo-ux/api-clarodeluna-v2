@@ -1,0 +1,6 @@
+export enum OtpStatus {
+  ACTIVE = 'ACTIVE',
+  CONSUMED = 'CONSUMED',
+  EXPIRED = 'EXPIRED',
+  INVALIDATED = 'INVALIDATED',
+}
