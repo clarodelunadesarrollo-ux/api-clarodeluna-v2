@@ -122,34 +122,38 @@ export class BackupService {
         await tx.reservationBlackout.deleteMany();
 
         const themePresets = await tx.themePreset.createMany({
-          data: this.rows(data.themePresets),
+          data: this.rows(data.themePresets) as Prisma.ThemePresetCreateManyInput[],
         });
         const menuSections = await tx.menuSection.createMany({
-          data: this.rows(data.menuSections),
+          data: this.rows(data.menuSections) as Prisma.MenuSectionCreateManyInput[],
         });
         const menuDishes = await tx.menuDish.createMany({
-          data: this.rows(data.menuDishes),
+          data: this.rows(data.menuDishes) as Prisma.MenuDishCreateManyInput[],
         });
         const tourStops = await tx.tourStop.createMany({
-          data: this.rows(data.tourStops),
+          data: this.rows(data.tourStops) as Prisma.TourStopCreateManyInput[],
         });
         const huertaItems = await tx.huertaItem.createMany({
-          data: this.rows(data.huertaItems),
+          data: this.rows(data.huertaItems) as Prisma.HuertaItemCreateManyInput[],
         });
         const vrExperiences = await tx.vrExperience.createMany({
-          data: this.rows(data.vrExperiences),
+          data: this.rows(data.vrExperiences) as Prisma.VrExperienceCreateManyInput[],
         });
         const promoCards = await tx.promoCard.createMany({
-          data: this.rows(data.promoCards),
+          data: this.rows(data.promoCards) as Prisma.PromoCardCreateManyInput[],
         });
         const appSettings = await tx.appSetting.createMany({
-          data: this.rows(data.appSettings),
+          data: this.rows(data.appSettings) as Prisma.AppSettingCreateManyInput[],
         });
         const reservationSchedules = await tx.reservationSchedule.createMany({
-          data: this.rows(data.reservationSchedules),
+          data: this.rows(
+            data.reservationSchedules,
+          ) as Prisma.ReservationScheduleCreateManyInput[],
         });
         const reservationBlackouts = await tx.reservationBlackout.createMany({
-          data: this.rows(data.reservationBlackouts),
+          data: this.rows(
+            data.reservationBlackouts,
+          ) as Prisma.ReservationBlackoutCreateManyInput[],
         });
 
         let themeConfiguration = false;
