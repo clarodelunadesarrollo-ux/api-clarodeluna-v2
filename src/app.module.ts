@@ -4,11 +4,12 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 
 import {
-    JWT_AUTH_CONFIG,
-    JwtAuthConfig,
-    JwtAuthGuard,
+  JWT_AUTH_CONFIG,
+  JwtAuthConfig,
+  JwtAuthGuard,
 } from './common/auth/jwt-auth.guard';
 import { validateEnv } from './config/env.validation';
+import { HealthController } from './health/health.controller';
 import { AuthModule } from './modules/auth/auth.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { ChatModule } from './modules/chat/chat.module';
@@ -43,6 +44,7 @@ import { PrismaModule } from './prisma/prisma.module';
     UsersModule,
     BackupModule,
   ],
+  controllers: [HealthController],
   providers: [
     {
       provide: JWT_AUTH_CONFIG,
