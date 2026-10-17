@@ -10,8 +10,12 @@ import {
     ParseUUIDPipe,
     Patch,
     Post,
+    UseGuards,
 } from '@nestjs/common';
 
+import { RolesGuard } from '../../../../common/auth/roles.guard';
+import { UserRole } from '../../../../common/auth/user-role.enum';
+import { Roles } from '../../../../common/decorators/roles.decorator';
 import {
     CREATE_TOUR_STOP_USE_CASE,
     CreateTourStopUseCasePort,
@@ -37,8 +41,8 @@ import { TourStopResponseDto } from '../dtos/tour-stop-response.dto';
 import { UpdateTourStopDto } from '../dtos/update-tour-stop.dto';
 
 // All routes are protected by the global JwtAuthGuard. The guest app consumes
-// the list endpoint after check-in; the write endpoints are consumed by the
-// future admin app. Admin-role authorization is future work (TODO: admin role).
+// the read endpoints after check-in; the write endpoints are restricted to
+// ADMIN via RolesGuard and are consumed by the admin app.
 @Controller('tour/stops')
 export class TourStopsController {
   constructor(
@@ -69,6 +73,8 @@ export class TourStopsController {
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() dto: CreateTourStopDto): Promise<TourStopResponseDto> {
     const stop = await this.createStop.execute(dto);
@@ -76,6 +82,8 @@ export class TourStopsController {
   }
 
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTourStopDto,
@@ -85,6 +93,8 @@ export class TourStopsController {
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.deleteStop.execute(id);

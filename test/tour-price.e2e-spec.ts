@@ -36,6 +36,25 @@ describe('Settings tour price (e2e)', () => {
     return validate.body.data.accessToken as string;
   };
 
+  // Issues a token for a fresh user and promotes it to ADMIN so it passes the
+  // RolesGuard on the PATCH route.
+  const issueAdminToken = async (): Promise<string> => {
+    const email = uniqueEmail('admin');
+    const otpRequest = await request(app.getHttpServer())
+      .post('/api/v1/auth/otp/request')
+      .send({ email })
+      .expect(200);
+    const otp = otpRequest.body.data.otp as string;
+
+    const validate = await request(app.getHttpServer())
+      .post('/api/v1/auth/otp/validate')
+      .send({ email, otp })
+      .expect(200);
+
+    await prisma.user.update({ where: { email }, data: { role: 'ADMIN' } });
+    return validate.body.data.accessToken as string;
+  };
+
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -100,8 +119,18 @@ describe('Settings tour price (e2e)', () => {
       .expect(401);
   });
 
-  it('updates the price with a valid token and reflects it on read (200)', async () => {
+  it('rejects updating the price with a non-admin token (403)', async () => {
     const token = await issueAccessToken();
+
+    await request(app.getHttpServer())
+      .patch('/api/v1/settings/tour-price')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ priceCents: 7500000 })
+      .expect(403);
+  });
+
+  it('updates the price with an admin token and reflects it on read (200)', async () => {
+    const token = await issueAdminToken();
 
     const patch = await request(app.getHttpServer())
       .patch('/api/v1/settings/tour-price')
@@ -119,7 +148,7 @@ describe('Settings tour price (e2e)', () => {
   });
 
   it('rejects a negative price (400)', async () => {
-    const token = await issueAccessToken();
+    const token = await issueAdminToken();
 
     await request(app.getHttpServer())
       .patch('/api/v1/settings/tour-price')
@@ -129,7 +158,7 @@ describe('Settings tour price (e2e)', () => {
   });
 
   it('rejects a non-integer price (400)', async () => {
-    const token = await issueAccessToken();
+    const token = await issueAdminToken();
 
     await request(app.getHttpServer())
       .patch('/api/v1/settings/tour-price')

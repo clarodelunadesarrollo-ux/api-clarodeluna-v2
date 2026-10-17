@@ -1,6 +1,16 @@
-import { Body, Controller, Get, Inject, Patch } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    Inject,
+    Patch,
+    UseGuards,
+} from '@nestjs/common';
 
+import { RolesGuard } from '../../../../common/auth/roles.guard';
+import { UserRole } from '../../../../common/auth/user-role.enum';
 import { Public } from '../../../../common/decorators/public.decorator';
+import { Roles } from '../../../../common/decorators/roles.decorator';
 import {
     GET_TOUR_PRICE_SETTING_USE_CASE,
     GetTourPriceSettingUseCasePort,
@@ -30,9 +40,11 @@ export class TourPriceController {
     return new TourPriceResponseDto(result);
   }
 
-  // Protected by the global JWT guard. Admin-role authorization is future work;
-  // the dedicated admin app will consume this endpoint with its own auth.
+  // Protected by the global JwtAuthGuard AND restricted to ADMIN via RolesGuard.
+  // The admin app consumes this endpoint to edit the informative tour price.
   @Patch()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   async update(@Body() dto: UpdateTourPriceDto): Promise<TourPriceResponseDto> {
     const result = await this.updateTourPrice.execute(dto.priceCents);
     return new TourPriceResponseDto(result);

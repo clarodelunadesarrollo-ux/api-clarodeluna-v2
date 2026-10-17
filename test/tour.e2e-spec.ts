@@ -35,6 +35,25 @@ describe('Tour stops (e2e)', () => {
     return validate.body.data.accessToken as string;
   };
 
+  // Issues a token for a fresh user and promotes it to ADMIN so it passes the
+  // RolesGuard on the write routes.
+  const issueAdminToken = async (): Promise<string> => {
+    const email = uniqueEmail('admin');
+    const otpRequest = await request(app.getHttpServer())
+      .post('/api/v1/auth/otp/request')
+      .send({ email })
+      .expect(200);
+    const otp = otpRequest.body.data.otp as string;
+
+    const validate = await request(app.getHttpServer())
+      .post('/api/v1/auth/otp/validate')
+      .send({ email, otp })
+      .expect(200);
+
+    await prisma.user.update({ where: { email }, data: { role: 'ADMIN' } });
+    return validate.body.data.accessToken as string;
+  };
+
   const newStopPayload = (order: number) => ({
     order,
     title: `Parada ${order}`,
@@ -102,8 +121,8 @@ describe('Tour stops (e2e)', () => {
     expect(orders).toEqual([...orders].sort((a, b) => a - b));
   });
 
-  it('creates, reads, updates and deletes a stop with a valid token', async () => {
-    const token = await issueAccessToken();
+  it('creates, reads, updates and deletes a stop with an admin token', async () => {
+    const token = await issueAdminToken();
 
     const created = await request(app.getHttpServer())
       .post('/api/v1/tour/stops')
@@ -139,8 +158,18 @@ describe('Tour stops (e2e)', () => {
       .expect(404);
   });
 
-  it('rejects an out-of-range position on create (400)', async () => {
+  it('rejects creating a stop with a non-admin token (403)', async () => {
     const token = await issueAccessToken();
+
+    await request(app.getHttpServer())
+      .post('/api/v1/tour/stops')
+      .set('Authorization', `Bearer ${token}`)
+      .send(newStopPayload(103))
+      .expect(403);
+  });
+
+  it('rejects an out-of-range position on create (400)', async () => {
+    const token = await issueAdminToken();
 
     await request(app.getHttpServer())
       .post('/api/v1/tour/stops')
