@@ -5,9 +5,13 @@ import { DELETE_THEME_PRESET_USE_CASE } from './application/ports/in/delete-them
 import { GET_OTP_CHANNEL_SETTING_USE_CASE } from './application/ports/in/get-otp-channel-setting.port';
 import { GET_THEME_CONFIGURATION_USE_CASE } from './application/ports/in/get-theme-configuration.port';
 import { GET_THEME_PRESETS_USE_CASE } from './application/ports/in/get-theme-presets.port';
+import { GET_TOUR_MAP_TEXTS_SETTING_USE_CASE } from './application/ports/in/get-tour-map-texts-setting.port';
+import { GET_TOUR_PRICE_SETTING_USE_CASE } from './application/ports/in/get-tour-price-setting.port';
 import { UPDATE_OTP_CHANNEL_SETTING_USE_CASE } from './application/ports/in/update-otp-channel-setting.port';
 import { UPDATE_THEME_CONFIGURATION_USE_CASE } from './application/ports/in/update-theme-configuration.port';
 import { UPDATE_THEME_PRESET_USE_CASE } from './application/ports/in/update-theme-preset.port';
+import { UPDATE_TOUR_MAP_TEXTS_SETTING_USE_CASE } from './application/ports/in/update-tour-map-texts-setting.port';
+import { UPDATE_TOUR_PRICE_SETTING_USE_CASE } from './application/ports/in/update-tour-price-setting.port';
 import {
     APP_SETTING_REPOSITORY,
     AppSettingRepositoryPort,
@@ -25,18 +29,30 @@ import { DeleteThemePresetUseCase } from './application/use-cases/delete-theme-p
 import { GetOtpChannelSettingUseCase } from './application/use-cases/get-otp-channel-setting.use-case';
 import { GetThemeConfigurationUseCase } from './application/use-cases/get-theme-configuration.use-case';
 import { GetThemePresetsUseCase } from './application/use-cases/get-theme-presets.use-case';
+import { GetTourMapTextsSettingUseCase } from './application/use-cases/get-tour-map-texts-setting.use-case';
+import { GetTourPriceSettingUseCase } from './application/use-cases/get-tour-price-setting.use-case';
 import { UpdateOtpChannelSettingUseCase } from './application/use-cases/update-otp-channel-setting.use-case';
 import { UpdateThemeConfigurationUseCase } from './application/use-cases/update-theme-configuration.use-case';
 import { UpdateThemePresetUseCase } from './application/use-cases/update-theme-preset.use-case';
+import { UpdateTourMapTextsSettingUseCase } from './application/use-cases/update-tour-map-texts-setting.use-case';
+import { UpdateTourPriceSettingUseCase } from './application/use-cases/update-tour-price-setting.use-case';
 import { AppSettingPrismaRepository } from './infrastructure/persistence/repositories/app-setting-prisma.repository';
 import { ThemeConfigurationPrismaRepository } from './infrastructure/persistence/repositories/theme-configuration-prisma.repository';
 import { ThemePresetPrismaRepository } from './infrastructure/persistence/repositories/theme-preset-prisma.repository';
 import { SettingsController } from './presentation/controllers/settings.controller';
 import { ThemeAdminController } from './presentation/controllers/theme-admin.controller';
 import { ThemeController } from './presentation/controllers/theme.controller';
+import { TourMapTextsController } from './presentation/controllers/tour-map-texts.controller';
+import { TourPriceController } from './presentation/controllers/tour-price.controller';
 
 @Module({
-  controllers: [SettingsController, ThemeController, ThemeAdminController],
+  controllers: [
+    SettingsController,
+    TourPriceController,
+    TourMapTextsController,
+    ThemeController,
+    ThemeAdminController,
+  ],
   providers: [
     { provide: APP_SETTING_REPOSITORY, useClass: AppSettingPrismaRepository },
     {
@@ -61,6 +77,38 @@ import { ThemeController } from './presentation/controllers/theme.controller';
         settings: AppSettingRepositoryPort,
       ): UpdateOtpChannelSettingUseCase =>
         new UpdateOtpChannelSettingUseCase(settings),
+      inject: [APP_SETTING_REPOSITORY],
+    },
+    {
+      provide: GET_TOUR_PRICE_SETTING_USE_CASE,
+      useFactory: (
+        settings: AppSettingRepositoryPort,
+      ): GetTourPriceSettingUseCase =>
+        new GetTourPriceSettingUseCase(settings),
+      inject: [APP_SETTING_REPOSITORY],
+    },
+    {
+      provide: UPDATE_TOUR_PRICE_SETTING_USE_CASE,
+      useFactory: (
+        settings: AppSettingRepositoryPort,
+      ): UpdateTourPriceSettingUseCase =>
+        new UpdateTourPriceSettingUseCase(settings),
+      inject: [APP_SETTING_REPOSITORY],
+    },
+    {
+      provide: GET_TOUR_MAP_TEXTS_SETTING_USE_CASE,
+      useFactory: (
+        settings: AppSettingRepositoryPort,
+      ): GetTourMapTextsSettingUseCase =>
+        new GetTourMapTextsSettingUseCase(settings),
+      inject: [APP_SETTING_REPOSITORY],
+    },
+    {
+      provide: UPDATE_TOUR_MAP_TEXTS_SETTING_USE_CASE,
+      useFactory: (
+        settings: AppSettingRepositoryPort,
+      ): UpdateTourMapTextsSettingUseCase =>
+        new UpdateTourMapTextsSettingUseCase(settings),
       inject: [APP_SETTING_REPOSITORY],
     },
     {

@@ -45,6 +45,28 @@ async function seedReservationSchedules(): Promise<void> {
 // src/modules/settings/domain/notification-channel.ts
 const OTP_LOCAL_NOTIFICATION_ENABLED_KEY = 'otp.local_notification_enabled';
 
+// Keep in sync with TOUR_PRICE_CENTS_KEY in
+// src/modules/settings/domain/tour-pricing.ts
+const TOUR_PRICE_CENTS_KEY = 'tour.price_cents';
+
+// Keep in sync with TOUR_MAP_TEXTS_KEY / TOUR_MAP_TEXTS_DEFAULT in
+// src/modules/settings/domain/tour-map-texts.ts
+const TOUR_MAP_TEXTS_KEY = 'tour.map_texts';
+const TOUR_MAP_TEXTS_DEFAULT = {
+  title: 'Tu recorrido',
+  subtitle: 'Tocá un punto del mapa para ver el detalle.',
+  retry: 'Reintentar',
+  backTooltip: 'Volver al inicio',
+  refreshTooltip: 'Actualizar recorrido',
+  close: 'Cerrar',
+  emptyTitle: 'Todavía no hay paradas cargadas',
+  emptyMessage: 'Cuando el equipo cargue el recorrido, lo vas a ver acá.',
+  stepLabel: 'Parada {order}',
+  failureNetwork: 'Sin conexión. Revisá tu internet y reintentá.',
+  failureSession: 'Tu sesión expiró. Ingresá de nuevo.',
+  failureServer: 'No pudimos cargar el recorrido. Reintentá.',
+};
+
 async function seedAppSettings(): Promise<void> {
   const existing = await prisma.appSetting.findUnique({
     where: { key: OTP_LOCAL_NOTIFICATION_ENABLED_KEY },
@@ -52,6 +74,27 @@ async function seedAppSettings(): Promise<void> {
   if (existing === null) {
     await prisma.appSetting.create({
       data: { key: OTP_LOCAL_NOTIFICATION_ENABLED_KEY, value: 'true' },
+    });
+  }
+
+  const existingTourPrice = await prisma.appSetting.findUnique({
+    where: { key: TOUR_PRICE_CENTS_KEY },
+  });
+  if (existingTourPrice === null) {
+    await prisma.appSetting.create({
+      data: { key: TOUR_PRICE_CENTS_KEY, value: '5000000' },
+    });
+  }
+
+  const existingTourMapTexts = await prisma.appSetting.findUnique({
+    where: { key: TOUR_MAP_TEXTS_KEY },
+  });
+  if (existingTourMapTexts === null) {
+    await prisma.appSetting.create({
+      data: {
+        key: TOUR_MAP_TEXTS_KEY,
+        value: JSON.stringify(TOUR_MAP_TEXTS_DEFAULT),
+      },
     });
   }
 }
